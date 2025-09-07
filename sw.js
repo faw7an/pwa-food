@@ -1,5 +1,5 @@
 const staticCacheName = "site-static-v1.02";
-const dynamicCacheName = "site-dynamic-v1";
+const dynamicCacheName = "site-dynamic-v1.02";
 const assets = [
   "/",
   "/pages/fallback.html",
@@ -12,6 +12,17 @@ const assets = [
   "/img/dish.png",
   "https://fonts.googleapis.com/icon?family=Material+Icons",
 ];
+
+// cache size limiting
+const limitCacheSize = (name,size) =>{
+    caches.open(name).then((cache)=>{
+        cache.keys().then(keys =>{
+            if(keys.length > size){
+                cache.delete(keys[0]).then(()=>limitCacheSize(name,size))
+            }
+        })
+    })
+}
 
 self.addEventListener("install", (evt) => {
   // console.log('Service worker has been installed');
@@ -49,12 +60,15 @@ self.addEventListener("fetch", (evt) => {
           fetch(evt.request).then(async (fetchRes) => {
             const cache = await caches.open(dynamicCacheName);
             cache.put(evt.request.url, fetchRes.clone());
+            limitCacheSize(dynamicCacheName,5)
             return fetchRes;
           })
         );
       })
       .catch(() => {
-        return caches.match("pages/fallback.html");
+        if(evt.request.url.indexOf('.html') > -1){
+            return caches.match("pages/fallback.html");
+        }
       })
   );
 });
